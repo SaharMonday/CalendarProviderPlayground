@@ -4,6 +4,7 @@ import android.Manifest.permission.READ_CALENDAR
 import android.Manifest.permission.WRITE_CALENDAR
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.text.TextUtils
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -31,6 +32,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtVSelectedCalendarData: TextView
     private lateinit var linLayCustomData: View
     private lateinit var linLayShowEventData: View
+    private lateinit var btnAddCustomData: Button
+    private lateinit var edTxtCustomDataKey: EditText
+    private lateinit var edTxtCustomDataValue: EditText
 
     private lateinit var presenter: IPresenter
     private val viewModel: MainViewModel by viewModels()
@@ -57,6 +61,25 @@ class MainActivity : AppCompatActivity() {
         presenter.observeGeneratedEventId(lifecycle){
             handleGeneratedEventId(it)
         }
+
+        presenter.observeEventData(lifecycle){
+            handleEventData(it)
+        }
+
+        presenter.observeCustomDataAddedSuccessfully(lifecycle) { newRowId ->
+            handleCustomDataAddedSuccessfully(newRowId)
+        }
+    }
+
+    private fun handleCustomDataAddedSuccessfully(newRowId: Long) {
+        Toast.makeText(this, "new custom data added (rowId=$newRowId)", Toast.LENGTH_SHORT).show()
+        edTxtCustomDataKey.text.clear()
+        edTxtCustomDataValue.text.clear()
+    }
+
+    private fun handleEventData(eventData: EventData) {
+        Log.d(TAG, "handleEventData: eventData = $eventData")
+        txtVEventData.text = "eventData:\n$eventData"
     }
 
     private fun handleGeneratedEventId(generatedEventId: Long) {
@@ -93,15 +116,38 @@ class MainActivity : AppCompatActivity() {
     private fun initUIComponents() {
         btnCreateEvent = bnt_create_event
         btnQueryEvent = btn_query_event_data
+        btnAddCustomData = btn_submit_custom_data
         edTxtEventId = edTxtV_event_id
         txtVEventData = txtV_event_data
         txtVSelectedCalendarData = txtV_selected_calendar_data
         linLayCustomData = linLay_custom_data
         linLayShowEventData = linLay_show_event_data
+        edTxtCustomDataKey = edTxt_key
+        edTxtCustomDataValue = edTxt_value
         btnCreateEvent.setOnClickListener {
             viewModel.viewModelScope.launch {
                 presenter.createCalendarEvent()
             }
+        }
+        btnQueryEvent.setOnClickListener {
+            viewModel.viewModelScope.launch {
+                presenter.queryGeneratedEventData()
+            }
+        }
+        btnAddCustomData.setOnClickListener {
+            tryAddingCustomData()
+        }
+    }
+
+    private fun tryAddingCustomData() {
+        val keyTxt = edTxtCustomDataKey.text.toString()
+        val keyValue = edTxtCustomDataValue.text.toString()
+        if(!TextUtils.isEmpty(keyTxt) && !TextUtils.isEmpty(keyValue)){
+            viewModel.viewModelScope.launch {
+                presenter.addCustomDataToEvent(keyTxt, keyValue)
+            }
+        } else {
+            Toast.makeText(this, "please insert both \"key\" and \"value\" before submitting!", Toast.LENGTH_SHORT).show()
         }
     }
 
